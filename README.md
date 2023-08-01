@@ -1,5 +1,4 @@
 # Chord Analyzer
-***
 ***beta-test***
 
 Package provides method for analyzing chord based on guitar fingering pattern.
