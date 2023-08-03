@@ -18,14 +18,14 @@ func TestGetNames(t *testing.T) {
 		//	pattern: "231231",
 		//	fret:    1,
 		//	expected: &ChordNames{
-		//		Base: &chordName{
+		//		Base: &name{
 		//			Root:     "F",
 		//			Quality:  "m",
 		//			Extended: "maj13",
 		//			Altered:  "b9",
 		//			Omitted:  "",
 		//		},
-		//		Variations: []*chordName{
+		//		Variations: []*name{
 		//			{
 		//				Root:     "C",
 		//				Quality:  "aug",
@@ -69,14 +69,14 @@ func TestGetNames(t *testing.T) {
 			pattern: "XXX20X",
 			fret:    4,
 			expected: &ChordNames{
-				Base: chordName{
+				Base: ChordName{
 					Root:     "C#",
 					Quality:  "",
 					Extended: "5",
 					Altered:  "",
 					Omitted:  "",
 				},
-				Variations: []chordName{
+				Variations: []ChordName{
 					{
 						Root:     "G#",
 						Quality:  "sus4",
@@ -114,7 +114,8 @@ func TestGetNames(t *testing.T) {
 		},
 	}
 	for _, r := range testCase {
-		actual, err := GetNames(r.pattern, r.fret)
+		chord := NewChordInfo(r.pattern, r.fret, false)
+		actual, err := chord.GetNames()
 		assert.Equal(t, r.expected, actual)
 		if r.err != nil {
 			assert.EqualError(t, err, r.err.Error())

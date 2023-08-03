@@ -2,33 +2,69 @@ package analyzer
 
 import (
 	"errors"
+	"fmt"
+	"unicode"
 )
 
-// ChordNames stores information about chord construction.
-// It represents Root, Quality, Extension, Alterations and Omitted fields
+// ChordBuilder allows to generate chord tab and chord image.
+// Use "WithName()" method to implement this interface
+type ChordBuilder interface {
+	BuildTab() string
+	BuildPNG() ([]byte, error)
+}
+type ChordInfoWithName struct {
+	Name string
+	ChordInfo
+}
+
+// ChordInfo stores request information
 //
-// Ex: Cm7(addb9)
+// Pattern must look like "01220X" from the highest string to the lowest, have length = 6
+// and consist of 'X' for muted strings and digit from 0 to 5.
+// If Fret is 0 the chord will be Am. If Fret == 2 and Capo == false, the chord will be A6/9sus4.
+// If Fret == 2 and Capo == true, the chord will be Bm
 //
-// Root: C;
+// Capo influences on opened strings. If it is false, open strings (0 in pattern) will be calculated as open ¯\_(ツ)_/¯
+// If true, open strings will be calculated as there is capo on Fret.
 //
-// Quality: m (also can be sus2, sus4, dim or aug);
-//
-// Extension: 7 (has various values, like 13, maj11, b6/9, etc...);
-//
-// Alterations: addb9 (if more, they will be separated with comma);
-//
-// Omitted: this field will not be empty when the chord will not have some kind of 'third',
-// i.e. the chord will not be minor, major or suspended.
+// If you want to use frets over 5th, just increase Fret value. It supports frets up to 18 (+5).
+type ChordInfo struct {
+	Pattern string
+	Fret    int
+	Capo    bool
+}
+
+const (
+	patternLength = 6
+	maxFretNumber = 18
+)
+
+// ChordNames stores information about all variations of chord, built on notes in pattern.
 //
 // Field Base is for chord with the lowest fingered string.
 //
 // Field Variations is for other chords, which can be constructed using same notes.
 type ChordNames struct {
-	Base       chordName
-	Variations []chordName
+	Base       ChordName
+	Variations []ChordName
 }
 
-type chordName struct {
+// ChordName stores information about chord construction.
+// Example:
+//
+// Cm7(addb9)
+//
+// Root: C;
+//
+// Quality: m (also can be sus2, sus4, dim or aug);
+//
+// Extended: 7 (has various values, like 13, maj11, b6/9, etc...);
+//
+// Altered: addb9 (if more, they will be separated with comma);
+//
+// Omitted: this field will not be empty when the chord will not have some kind of 'third',
+// i.e. the chord will not be minor, major or suspended.
+type ChordName struct {
 	Root     string
 	Quality  string
 	Extended string
@@ -39,32 +75,57 @@ type chordName struct {
 // EmptyError can be used for preventing calculating if pattern has got no notes; ex: "XXXXXX"
 var EmptyError = errors.New("invalid request: pattern must contain at list one digit")
 
+// NewChordInfo returns new storage for request information
+func NewChordInfo(pattern string, fret int, capo bool) *ChordInfo {
+	return &ChordInfo{
+		Pattern: pattern,
+		Fret:    fret,
+		Capo:    capo,
+	}
+}
+
+// WithName allows to generate chord tab and image
+func (c *ChordInfo) WithName(name string) (ChordBuilder, error) {
+	if len(name) == 0 {
+		return nil, errors.New("chord name can't be empty")
+	}
+	if len(name) > 20 {
+		return nil, errors.New("chord name is too long")
+	}
+	err := validate(c.Pattern, c.Fret)
+	if err != nil {
+		return nil, err
+	}
+	return &ChordInfoWithName{
+		Name:      name,
+		ChordInfo: *c,
+	}, nil
+}
+
 // GetNames calculates intervals from guitar chord pattern and returns their symbolic values according to music theory.
 // Guitar pattern contains information about fingering of the chord
-// Ex: "01023X", Fret = 0 --> is equal to C major chord.
+// Ex: "00023X", fret = 2, capo = true --> is equal to Dmaj7 chord.
 // Method 'calculateNotes' deletes repeating notes, so it doesn't give information about note octave.
-// After calculation "01023X" ("ECGECX") becomes "CEG" and transforms in some interval array that looks like:
+// After calculation "00023X" ("F# D A F# D X") becomes "DF#A" and transforms into interval array that looks like:
 //
-//	"[true false false false true false false true false false false]"
+// "[true false false false true false false true false false false]"
 //
 // Further analyzing is quite complex series of "if else" statements.
 // At the end it returns struct with information about base chord, which note is on lowest string, and array of chords,
 // which can be constructed from used notes.
-// Pattern must have length = 6
-// If you want to use frets over 9th, just increase "fret" value. It supports frets below 23.
-func GetNames(pattern string, fret int) (*ChordNames, error) {
-	chordPattern := newChordPattern(pattern, fret)
-	err := chordPattern.validate()
+func (c *ChordInfo) GetNames() (*ChordNames, error) {
+	chordPattern := newNameInfo(c.Pattern, c.Fret, c.Capo)
+	err := validate(c.Pattern, c.Fret)
 	if err != nil {
 		return nil, err
 	}
-	var baseChordName chordName
-	var variations []chordName
+	var baseChordName ChordName
+	var variations []ChordName
 	notes, baseRoot, length := chordPattern.calculateNotes()
 	for bass, intervals := range notes {
 		root, quality, extended, altered, omitted := getIntervalsNames(bass, intervals, length)
 		if bass == baseRoot {
-			baseChordName = chordName{
+			baseChordName = ChordName{
 				Root:     root,
 				Quality:  quality,
 				Extended: extended,
@@ -72,7 +133,7 @@ func GetNames(pattern string, fret int) (*ChordNames, error) {
 				Omitted:  omitted,
 			}
 		} else {
-			variations = append(variations, chordName{
+			variations = append(variations, ChordName{
 				Root:     root,
 				Quality:  quality,
 				Extended: extended,
@@ -85,4 +146,58 @@ func GetNames(pattern string, fret int) (*ChordNames, error) {
 		Base:       baseChordName,
 		Variations: variations,
 	}, nil
+}
+
+// BuildName returns string constructed from ChordName fields
+func (c *ChordName) BuildName() string {
+	var name string
+	name = c.Root
+	if c.Quality == "sus2" || c.Quality == "sus4" {
+		name += c.Extended + c.Quality
+	} else {
+		name += c.Quality + c.Extended
+	}
+	if c.Altered != "" {
+		name += fmt.Sprintf("(%s)", c.Altered)
+	}
+	name += c.Omitted
+	return name
+}
+
+// BuildTab returns string containing chord fingering tab
+func (c *ChordInfoWithName) BuildTab() string {
+	info := newTabInfo(c.Name, c.Pattern, c.Fret, c.Capo)
+	return info.buildTab()
+}
+
+// BuildPNG returns PNG encoded bytes, which could be written into a file, http response, or somewhere else
+func (c *ChordInfoWithName) BuildPNG() ([]byte, error) {
+	info := newDrawInfo(c.Name, c.Pattern, c.Fret, c.Capo)
+	return info.buildPNG()
+}
+
+func validate(pattern string, fret int) error {
+	if len(pattern) != patternLength {
+		return lengthError
+	}
+	countX := 0
+	for _, r := range pattern {
+		if !unicode.IsDigit(r) {
+			if r == x {
+				countX++
+			} else {
+				return wrongSymbolsError
+			}
+			if r-48 > 5 {
+				return fretPatternError
+			}
+		}
+	}
+	if countX == patternLength {
+		return EmptyError
+	}
+	if fret < 0 || fret > maxFretNumber {
+		return fretNumberError
+	}
+	return nil
 }

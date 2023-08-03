@@ -2,78 +2,62 @@ package analyzer
 
 import (
 	"errors"
-	"unicode"
 )
 
-type chordPattern struct {
-	Pattern string
-	Fret    int
+type nameInfo struct {
+	pattern string
+	fret    int
+	capo    bool
 }
 
-func newChordPattern(pattern string, fret int) *chordPattern {
-	return &chordPattern{
-		Pattern: pattern,
-		Fret:    fret,
+func newNameInfo(pattern string, fret int, capo bool) *nameInfo {
+	return &nameInfo{
+		pattern: pattern,
+		fret:    fret,
+		capo:    capo,
 	}
 }
 
 const (
-	x             = 'X'
-	patternLength = 6
-	maxFretNumber = 23
+	x = 'X'
+
+	eString = 0
+	bString = 7
+	gString = 3
+	dString = 10
+	aString = 5
 )
 
 var (
 	lengthError       = errors.New("invalid request: pattern must consist of six symbols")
 	wrongSymbolsError = errors.New("invalid request: pattern must contain only digits and 'X'")
-	fretNumberError   = errors.New("invalid request: offset fret number must be positive and less than '23'")
+	fretNumberError   = errors.New("invalid request: offset fret number must be positive and less or equal '18'")
+	fretPatternError  = errors.New("invalid request: fret number must be less or equal '5'")
 )
 
-func (c *chordPattern) validate() error {
-	if len(c.Pattern) != patternLength {
-		return lengthError
-	}
-	countX := 0
-	for _, r := range c.Pattern {
-		if !unicode.IsDigit(r) {
-			if r == x {
-				countX++
-			} else {
-				return wrongSymbolsError
-			}
-		}
-	}
-	if countX == patternLength {
-		return EmptyError
-	}
-	if c.Fret < 0 || c.Fret > maxFretNumber {
-		return fretNumberError
-	}
-	return nil
-}
-func (c *chordPattern) calculateNotes() (map[int][]bool, int, int) {
+func (c *nameInfo) calculateNotes() (map[int][]bool, int, int) {
 	var root, length int
 	var intervals []bool
 	res := make(map[int][]bool)
-	for i, n := range c.Pattern {
+	for i, n := range c.pattern {
 		if n != x {
-			note := findNote(i, int(n), c.Fret)
+			note := findNote(i, int(n), c.fret, c.capo)
 			intervals, length = c.getIntervals(note)
 			if _, ok := res[note]; !ok {
 				res[note] = intervals
-				root = note
 			}
+			root = note
 		}
 	}
 	return res, root, length
 }
 
-func (c *chordPattern) getIntervals(noteIndex int) ([]bool, int) {
+func (c *nameInfo) getIntervals(noteIndex int) ([]bool, int) {
 	iArr := make([]bool, 12)
 	length := 0
-	for i, n := range c.Pattern {
+	for i, n := range c.pattern {
 		if n != x {
-			note := findNote(i, int(n), c.Fret)
+			note := findNote(i, int(n), c.fret, c.capo)
 			ivl := (12 - (noteIndex - note)) % 12
 			if !iArr[ivl] {
 				length++
@@ -84,18 +68,22 @@ func (c *chordPattern) getIntervals(noteIndex int) ([]bool, int) {
 	return iArr, length
 }
 
-func findNote(str, pos, fret int) (res int) {
+func findNote(str, pos, fret int, capo bool) (res int) {
+	if pos == 48 && fret != 0 && !capo {
+		fret = 0
+	}
 	switch str {
 	case 0, 5:
-		res = (fret + pos - 48) % 12
+		res = (eString + fret + pos - 48) % 12
 	case 1:
-		res = (fret + pos - 41) % 12
+		res = (bString + fret + pos - 48) % 12
 	case 2:
-		res = (fret + pos - 45) % 12
+		res = (gString + fret + pos - 48) % 12
 	case 3:
-		res = (fret + pos - 38) % 12
+		res = (dString + fret + pos - 48) % 12
 	case 4:
-		res = (fret + pos - 43) % 12
+		res = (aString + fret + pos - 48) % 12
 	}
+
 	return
 }

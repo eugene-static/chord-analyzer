@@ -5,69 +5,61 @@ import (
 )
 
 const (
-	ROOT           = iota
-	MIN_SECOND     //m2
-	MAJ_SECOND     //M2
-	MIN_THIRD      //m3
-	MAJ_THIRD      //M3
-	PERFECT_FOURTH //P4
-	FLAT_FIFTH     //d5
-	PERFECT_FIFTH  //P5
-	FLAT_SIXTH     //m6
-	SIXTH          //M6
-	MIN_SEVENTH    //m7
-	MAJ_SEVENTH    //M7
+	minSecond     = 1 + iota //m2
+	majSecond                //M2
+	minThird                 //m3
+	majThird                 //M3
+	perfectFourth            //P4
+	flatFifth                //d5
+	perfectFifth             //P5
+	flatSixth                //m6
+	sixth                    //M6
+	minSeventh               //m7
+	majSeventh               //M7
 )
 const (
-	SHARP_FIFTH     = FLAT_SIXTH
-	DIM_SEVEN       = SIXTH
-	FLAT_NINTH      = MIN_SECOND
-	NINTH           = MAJ_SECOND
-	SHARP_NINTH     = MIN_THIRD
-	ELEVENTH        = PERFECT_FOURTH
-	SHARP_ELEVENTH  = FLAT_FIFTH
-	FLAT_THIRTEENTH = FLAT_SIXTH
-	THIRTEENTH      = SIXTH
+	sharpFifth     = flatSixth
+	flatNinth      = minSecond
+	ninth          = majSecond
+	sharpNinth     = minThird
+	eleventh       = perfectFourth
+	sharpEleventh  = flatFifth
+	flatThirteenth = flatSixth
+	thirteenth     = sixth
 )
 const (
-	Q_SUS2 = iota
-	Q_MIN
-	Q_DUR
-	Q_SUS4
-	Q_DIM
-	Q_AUG
-	E_5
-	E_B6
-	E_B69
-	E_B611
-	E_B6911
-	E_6
-	E_69
-	E_611
-	E_6911
-	E_7
-	E_9
-	E_11
-	E_13
-	E_MAJ7
-	E_MAJ9
-	E_MAJ11
-	E_MAJ13
-	A_B5
-	A_S5
-	A_B9
-	A_S9
-	A_S11
-	A_B13
-	A_ADDB9
-	A_ADD9
-	A_ADDS9
-	A_ADD11
-	A_ADDS11
-	O_NO3
-	O_NO5
-	O_NO6
-	O_NO7
+	qsus2 = iota
+	qmin
+	qdur
+	qsus4
+	qdim
+	qaug
+	e5
+	eb6
+	e6
+	e7
+	e9
+	e11
+	e13
+	emaj7
+	emaj9
+	emaj11
+	emaj13
+	ab5
+	as5
+	ab9
+	as9
+	as11
+	ab13
+	aaddb9
+	aadd9
+	aadds9
+	aadd11
+	aadds11
+	ono3
+	ono5
+	ono6
+	ono7
 )
 
 type trapped struct {
@@ -80,14 +72,13 @@ type trapped struct {
 }
 
 func prepare() *trapped {
-	hooks := make([]bool, 38)
+	hooks := make([]bool, 32)
 	for i := range hooks {
 		hooks[i] = false
 	}
 	return &trapped{hooks: hooks,
 		symbols: []string{"sus2", "m", "dur", "sus4", "dim", "aug",
-			"5", "b6", "b6/9", "b6/11", "b6/9/11", "6", "6/9", "6/11", "6/9/11", "7",
-			"9", "11", "13", "maj7", "maj9", "maj11", "maj13",
+			"5", "b6", "6", "7", "9", "11", "13", "maj7", "maj9", "maj11", "maj13",
 			"b5", "#5", "b9", "#9", "#11", "b13", "addb9", "add9", "add#9", "add11", "add#11",
 			"no3", "no5", "no6", "no7"},
 		notes: []string{"E", "F", "fg", "G", "ga", "A", "ab", "B", "C", "cd", "D", "de"},
@@ -126,157 +117,157 @@ func (trap *trapped) rid(i int) {
 }
 
 func (trap *trapped) install(c []bool) {
-	trap.catch(O_NO3, O_NO5, O_NO6, O_NO7)
-	if c[MAJ_SECOND] && !(c[MIN_THIRD] || c[MAJ_THIRD] || c[PERFECT_FOURTH]) {
-		trap.cop(Q_SUS2)
-		trap.rid(O_NO3)
+	trap.catch(ono3, ono5, ono6, ono7)
+	if c[majSecond] && !(c[minThird] || c[majThird] || c[perfectFourth]) {
+		trap.cop(qsus2)
+		trap.rid(ono3)
 	}
-	if c[MIN_THIRD] && !c[MAJ_THIRD] {
-		trap.cop(Q_MIN)
-		trap.rid(O_NO3)
+	if c[minThird] && !c[majThird] {
+		trap.cop(qmin)
+		trap.rid(ono3)
 	}
-	if c[MAJ_THIRD] {
-		trap.cop(Q_DUR)
-		trap.rid(O_NO3)
+	if c[majThird] {
+		trap.cop(qdur)
+		trap.rid(ono3)
 	}
-	if c[PERFECT_FOURTH] && !(c[MIN_THIRD] || c[MAJ_THIRD]) {
-		trap.cop(Q_SUS4)
-		trap.rid(O_NO3)
+	if c[perfectFourth] && !(c[minThird] || c[majThird]) {
+		trap.cop(qsus4)
+		trap.rid(ono3)
 	}
-	if c[FLAT_FIFTH] && !c[PERFECT_FIFTH] {
-		trap.cop(A_B5)
-		trap.rid(O_NO5)
-		if c[MIN_THIRD] && !(c[MIN_SEVENTH] || c[MAJ_SEVENTH]) {
-			trap.cop(Q_DIM)
-			trap.release(Q_MIN, A_B5)
+	if c[flatFifth] && !c[perfectFifth] {
+		trap.cop(ab5)
+		trap.rid(ono5)
+		if c[minThird] && !(c[minSeventh] || c[majSeventh]) {
+			trap.cop(qdim)
+			trap.release(qmin, ab5)
 		}
 	}
-	if c[PERFECT_FIFTH] {
-		trap.cop(E_5)
-		trap.rid(O_NO5)
+	if c[perfectFifth] {
+		trap.cop(e5)
+		trap.rid(ono5)
 	}
-	if c[SHARP_FIFTH] && !(c[MAJ_SECOND] || c[MIN_THIRD] || /*c[PERFECT_FOURTH] ||*/ c[PERFECT_FIFTH]) {
-		trap.cop(A_S5)
-		trap.rid(O_NO5)
-		if c[MAJ_THIRD] && !(c[MIN_SEVENTH] || c[MAJ_SEVENTH]) {
-			trap.cop(Q_AUG)
-			trap.release(Q_DUR, A_B5, A_S5)
+	if c[sharpFifth] && !(c[majSecond] || c[minThird] || /*c[perfectFourth] ||*/ c[perfectFifth]) {
+		trap.cop(as5)
+		trap.rid(ono5)
+		if c[majThird] && !(c[minSeventh] || c[majSeventh]) {
+			trap.cop(qaug)
+			trap.release(qdur, ab5, as5)
 		}
 	}
-	if c[FLAT_SIXTH] && !(c[MAJ_THIRD] || c[SIXTH] || c[MIN_SEVENTH] || c[MAJ_SEVENTH]) {
-		if !trap.hooks[Q_AUG] {
-			trap.cop(E_B6)
-			trap.rid(O_NO6)
-			//	trap.rid(E_B6)
-			//	trap.cop(O_NO6)
+	if c[flatSixth] && !(c[majThird] || c[sixth] || c[minSeventh] || c[majSeventh]) {
+		if !trap.hooks[qaug] {
+			trap.cop(eb6)
+			trap.rid(ono6)
+			//	trap.rid(eb6)
+			//	trap.cop(ono6)
 		}
 	}
-	if c[SIXTH] && !(c[MIN_SEVENTH] || c[MAJ_SEVENTH]) {
-		trap.cop(E_6)
-		trap.rid(O_NO6)
-		if trap.hooks[Q_DIM] {
-			trap.release(E_6, O_NO7)
-			trap.catch(E_7, O_NO6)
+	if c[sixth] && !(c[minSeventh] || c[majSeventh]) {
+		trap.cop(e6)
+		trap.rid(ono6)
+		if trap.hooks[qdim] {
+			trap.release(e6, ono7)
+			trap.catch(e7, ono6)
 		}
 	}
-	if c[MIN_SEVENTH] {
-		if !trap.hooks[Q_DIM] {
-			trap.cop(E_7)
-			trap.rid(O_NO7)
+	if c[minSeventh] {
+		if !trap.hooks[qdim] {
+			trap.cop(e7)
+			trap.rid(ono7)
 		}
 	}
-	if c[MAJ_SEVENTH] {
-		if !trap.hooks[Q_DIM] {
-			trap.cop(E_MAJ7)
-			trap.rid(O_NO7)
+	if c[majSeventh] {
+		if !trap.hooks[qdim] {
+			trap.cop(emaj7)
+			trap.rid(ono7)
 		}
 	}
-	if c[FLAT_NINTH] {
-		if trap.hooks[O_NO7] && trap.hooks[O_NO6] {
-			trap.cop(A_ADDB9)
+	if c[flatNinth] {
+		if trap.hooks[ono7] && trap.hooks[ono6] {
+			trap.cop(aaddb9)
 		} else {
-			trap.cop(A_B9)
+			trap.cop(ab9)
 		}
 	}
-	if c[NINTH] {
-		if !trap.hooks[Q_SUS2] {
-			if trap.hooks[O_NO7] && trap.hooks[O_NO6] {
-				trap.cop(A_ADD9)
+	if c[ninth] {
+		if !trap.hooks[qsus2] {
+			if trap.hooks[ono7] && trap.hooks[ono6] {
+				trap.cop(aadd9)
 			} else {
-				if trap.hooks[O_NO7] {
-					trap.cop(E_9)
-					trap.rid(E_B6)
+				if trap.hooks[ono7] {
+					trap.cop(e9)
+					trap.rid(eb6)
 				} else {
-					if trap.hooks[E_7] {
-						trap.cop(E_9)
-						trap.rid(E_7)
+					if trap.hooks[e7] {
+						trap.cop(e9)
+						trap.rid(e7)
 					}
-					if trap.hooks[E_MAJ7] {
-						trap.cop(E_MAJ9)
-						trap.rid(E_MAJ7)
+					if trap.hooks[emaj7] {
+						trap.cop(emaj9)
+						trap.rid(emaj7)
 					}
 				}
 			}
 		}
 
 	}
-	if c[SHARP_NINTH] {
-		if !(trap.hooks[Q_MIN] || trap.hooks[Q_DIM]) {
-			if trap.hooks[O_NO7] && trap.hooks[O_NO6] {
-				trap.cop(A_ADDS9)
+	if c[sharpNinth] {
+		if !(trap.hooks[qmin] || trap.hooks[qdim]) {
+			if trap.hooks[ono7] && trap.hooks[ono6] {
+				trap.cop(aadds9)
 			} else {
-				trap.cop(A_S9)
+				trap.cop(as9)
 			}
 		}
 	}
-	if c[ELEVENTH] {
-		if !trap.hooks[Q_SUS4] {
-			if trap.hooks[O_NO7] && trap.hooks[O_NO6] {
-				trap.cop(A_ADD11)
+	if c[eleventh] {
+		if !trap.hooks[qsus4] {
+			if trap.hooks[ono7] && trap.hooks[ono6] {
+				trap.cop(aadd11)
 			} else {
-				if trap.hooks[O_NO7] {
-					trap.cop(E_11)
+				if trap.hooks[ono7] {
+					trap.cop(e11)
 				} else {
-					if trap.hooks[E_7] || trap.hooks[E_9] {
-						trap.cop(E_11)
-						trap.release(E_7, E_9)
+					if trap.hooks[e7] || trap.hooks[e9] {
+						trap.cop(e11)
+						trap.release(e7, e9)
 					}
-					if trap.hooks[E_MAJ7] || trap.hooks[E_MAJ9] {
-						trap.cop(E_MAJ11)
-						trap.release(E_MAJ7, E_MAJ9)
+					if trap.hooks[emaj7] || trap.hooks[emaj9] {
+						trap.cop(emaj11)
+						trap.release(emaj7, emaj9)
 					}
 				}
 			}
 		}
 	}
-	if c[SHARP_ELEVENTH] {
-		if !(trap.hooks[Q_MIN] || trap.hooks[Q_DIM] || trap.hooks[A_B5]) {
-			if trap.hooks[O_NO6] && trap.hooks[O_NO7] {
-				trap.cop(A_ADDS11)
+	if c[sharpEleventh] {
+		if !(trap.hooks[qmin] || trap.hooks[qdim] || trap.hooks[ab5]) {
+			if trap.hooks[ono6] && trap.hooks[ono7] {
+				trap.cop(aadds11)
 			} else {
-				trap.cop(A_S11)
+				trap.cop(as11)
 			}
 		}
 	}
-	if c[FLAT_THIRTEENTH] {
-		//if !trap.hooks[A_S5] && !trap.hooks[Q_AUG] && (!trap.hooks[O_NO7] || !trap.hooks[O_NO6]) {
-		//	trap.cop(A_B13)
-		//	trap.rid(E_B6)
+	if c[flatThirteenth] {
+		//if !trap.hooks[as5] && !trap.hooks[qaug] && (!trap.hooks[ono7] || !trap.hooks[ono6]) {
+		//	trap.cop(ab13)
+		//	trap.rid(eb6)
 		//}
-		if !trap.hooks[Q_AUG] && !trap.hooks[O_NO7] {
-			trap.cop(A_B13)
-			trap.release(E_B6, A_S5)
+		if !trap.hooks[qaug] && !trap.hooks[ono7] {
+			trap.cop(ab13)
+			trap.release(eb6, as5)
 		}
 	}
-	if c[THIRTEENTH] {
-		if !trap.hooks[Q_DIM] && trap.hooks[O_NO6] {
-			if trap.hooks[E_7] || trap.hooks[E_9] || trap.hooks[E_11] {
-				trap.cop(E_13)
-				trap.release(E_7, E_9, E_11)
+	if c[thirteenth] {
+		if !trap.hooks[qdim] && trap.hooks[ono6] {
+			if trap.hooks[e7] || trap.hooks[e9] || trap.hooks[e11] {
+				trap.cop(e13)
+				trap.release(e7, e9, e11)
 			}
-			if trap.hooks[E_MAJ7] || trap.hooks[E_MAJ9] || trap.hooks[E_MAJ11] {
-				trap.cop(E_MAJ13)
-				trap.release(E_MAJ7, E_MAJ9, E_MAJ11)
+			if trap.hooks[emaj7] || trap.hooks[emaj9] || trap.hooks[emaj11] {
+				trap.cop(emaj13)
+				trap.release(emaj7, emaj9, emaj11)
 			}
 		}
 	}
@@ -295,9 +286,9 @@ func getIntervalsNames(rootIndex int, intervals []bool, length int) (root, quali
 	trap.install(intervals)
 	var ext, alt []string
 	switch {
-	case trap.hooks[Q_DUR]:
+	case trap.hooks[qdur]:
 		root = trap.majorMap[root]
-	case trap.hooks[Q_DIM], trap.hooks[Q_AUG]:
+	case trap.hooks[qdim], trap.hooks[qaug]:
 		root = trap.sharpMap[root]
 	default:
 		root = trap.minorMap[root]
@@ -305,12 +296,12 @@ func getIntervalsNames(rootIndex int, intervals []bool, length int) (root, quali
 	for i, r := range trap.hooks {
 		if r {
 			switch {
-			case i < E_5:
-				if i != Q_DUR {
+			case i < e5:
+				if i != qdur {
 					quality = trap.symbols[i]
 				}
-			case i < A_B5:
-				if i == E_5 {
+			case i < ab5:
+				if i == e5 {
 					if length == 2 {
 						extended = trap.symbols[i]
 						return
@@ -318,9 +309,9 @@ func getIntervalsNames(rootIndex int, intervals []bool, length int) (root, quali
 				} else {
 					ext = append(ext, trap.symbols[i])
 				}
-			case i < O_NO3:
+			case i < ono3:
 				alt = append(alt, trap.symbols[i])
-			case i == O_NO3:
+			case i == ono3:
 				omitted = trap.symbols[i]
 			}
 		}
