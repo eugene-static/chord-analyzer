@@ -48,14 +48,14 @@ name := names.Base.BuildName() // Dmaj7
 "WithName" method allows you to use "BuildTab" and "BuildChord" methods.
 You can use your own name, if you are not agree with analyzed name
 
-````
+```
 chordWithName, err := chord.WithName(name)
 if err != nil {...}
 tab := chordWithName.BuildTab()
 fmt.Println(tab)
-````
+```
 **Result:**
-````
+```
 Dmaj7
 0|---|---|---|---|---|
 0|---|---|---|---|---|
@@ -66,10 +66,10 @@ X|---|---|---|---|---|
 c  3   4   5   6   7
 
 // "c" is for capo
-````
+```
 "BuildPNG" returns []byte, so it can be written to any output.
 Result image resolution is 475x400 px
-````
+```
 file, err := os.Create("result.png")
 if err != nil {...}
 img, err := chordWithName.BuildPNG()
