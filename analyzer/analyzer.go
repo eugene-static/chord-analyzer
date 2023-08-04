@@ -188,9 +188,8 @@ func validate(pattern string, fret int) error {
 			} else {
 				return wrongSymbolsError
 			}
-			if r-48 > 5 {
-				return fretPatternError
-			}
+		} else if r-48 > 5 {
+			return fretPatternError
 		}
 	}
 	if countX == patternLength {
