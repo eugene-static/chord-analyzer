@@ -17,8 +17,8 @@ const (
 	deadEnd      = "X|"
 	openString   = "0|"
 	pushedString = "-|"
-	space        = " "
-	doubleSpace  = "  "
+	space        = "\u00A0"
+	doubleSpace  = space + space
 	capodastro   = "c"
 	finger       = "#"
 )

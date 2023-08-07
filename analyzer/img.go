@@ -8,7 +8,7 @@ import (
 	"image/draw"
 	"image/png"
 	"os"
-	"strconv"
+	"path/filepath"
 
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
@@ -24,13 +24,12 @@ type drawInfo struct {
 }
 
 const (
-	nameFontsize  = 24
-	fretsFontSize = 18
-	fontDPI       = 72
-	zero          = 0
-	cellWidth     = 75
-	cellHeight    = 50
-	grayColor     = 25
+	nameFontsize = 32
+	fontDPI      = 72
+	zero         = 0
+	cellWidth    = 100
+	cellHeight   = 60
+	fretMax      = 18
 )
 const (
 	fretBoardPath = "analyzer/src/fretboard.png"
@@ -64,30 +63,40 @@ func (info *drawInfo) buildPNG() ([]byte, error) {
 	openZP := image.Pt(cellWidth, zero)
 	mutedZP := image.Pt(cellWidth*2, zero)
 	capoZP := image.Pt(cellWidth*3, zero)
+	canvas := image.NewRGBA(image.Rect(0, 0, cellWidth*6+cellWidth/2, cellHeight*7+cellHeight/2))
+	draw.Draw(canvas, canvas.Bounds(), fretboard, image.Pt(info.fret*cellWidth, zero), draw.Src)
+	if info.fret != 0 {
+		draw.Draw(canvas, image.Rect(0, 0, cellWidth, canvas.Bounds().Max.Y),
+			fretboard, image.Pt(zero, zero), draw.Src)
+	}
+	if info.fret != fretMax {
+		draw.Draw(canvas, image.Rect(cellWidth*6+2, 0, cellWidth*6+cellWidth/2, canvas.Bounds().Max.Y),
+			fretboard, image.Pt(zero, zero), draw.Src)
+	}
 	cell := image.Rect(zero, zero, cellWidth, cellHeight)
 	for i, str := range tab {
 		height := i*cellHeight + cellHeight
 		switch str {
 		case -1:
 			move(&cell, zero, height)
-			draw.Draw(fretboard, cell, symbols, mutedZP, draw.Over)
+			draw.Draw(canvas, cell, symbols, mutedZP, draw.Over)
 		case 0:
 			move(&cell, zero, height)
-			draw.Draw(fretboard, cell, symbols, openZP, draw.Over)
+			draw.Draw(canvas, cell, symbols, openZP, draw.Over)
 		default:
 			move(&cell, str*cellWidth, height)
-			draw.Draw(fretboard, cell, symbols, fingerZP, draw.Over)
+			draw.Draw(canvas, cell, symbols, fingerZP, draw.Over)
 		}
 	}
 	if info.capo && info.fret != 0 {
-		move(&cell, zero, cellHeight*7)
-		draw.Draw(fretboard, cell, symbols, capoZP, draw.Over)
+		move(&cell, zero, cellHeight*6+cellHeight/2)
+		draw.Draw(canvas, cell, symbols, capoZP, draw.Over)
 	}
-	err = drawText(fretboard, info.name, info.fret)
+	err = drawText(canvas, info.name, info.fret)
 	if err != nil {
 		return nil, err
 	}
-	return writeToBytes(fretboard)
+	return writeToBytes(canvas)
 }
 func writeToBytes(img *image.RGBA) ([]byte, error) {
 	var b []byte
@@ -100,48 +109,38 @@ func writeToBytes(img *image.RGBA) ([]byte, error) {
 }
 
 func drawText(img *image.RGBA, name string, fret int) error {
-	fontFile, err := os.ReadFile(verdanaPath)
+	dir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	bg := color.Gray{Y: grayColor}
-	cell := image.Rect(zero, zero, cellWidth*5, cellHeight)
-	canvas := image.NewRGBA(cell)
+	fontFile, err := os.ReadFile(filepath.Join(dir, verdanaPath))
+	if err != nil {
+		return err
+	}
 	fontFace, err := freetype.ParseFont(fontFile)
-	draw.Draw(canvas, cell, &image.Uniform{C: bg}, image.Pt(zero, zero), draw.Src)
 	faceOptions := &truetype.Options{
-		Size:    fretsFontSize,
+		Size:    nameFontsize,
 		DPI:     fontDPI,
 		Hinting: font.HintingNone,
 	}
 	fontDrawer := &font.Drawer{
-		Dst:  canvas,
+		Dst:  img,
 		Src:  image.NewUniform(color.White),
 		Face: truetype.NewFace(fontFace, faceOptions),
 	}
 	fontDrawer.Dot = fixed.Point26_6{
-		Y: fixed.I(cellHeight / 2),
-	}
-
-	for i := 0; i < 5; i++ {
-		txt := strconv.Itoa(fret + i + 1)
-		fontDrawer.Dot.X = (fixed.I(cellWidth)-fontDrawer.MeasureString(txt))/2 + fixed.I(cellWidth*i)
-		fontDrawer.DrawString(txt)
-	}
-	cell = image.Rect(cellWidth, cellHeight*7, cellWidth*6, cellHeight*8)
-	draw.Draw(img, cell, canvas, image.Pt(zero, zero), draw.Over)
-	faceOptions.Size = nameFontsize
-	fontDrawer.Dst = img
-	fontDrawer.Face = truetype.NewFace(fontFace, faceOptions)
-	fontDrawer.Dot = fixed.Point26_6{
-		X: fixed.I(cellWidth) + (fixed.I(img.Bounds().Max.X-cellWidth-cellWidth/3)-fontDrawer.MeasureString(name))/2,
+		X: fixed.I(cellWidth) + (fixed.I(img.Bounds().Max.X-cellWidth-cellWidth/2)-fontDrawer.MeasureString(name))/2,
 		Y: fixed.I(cellHeight+nameFontsize) / 2,
 	}
 	fontDrawer.DrawString(name)
 	return nil
 }
 func readPNG(name string) (*image.RGBA, error) {
-	file, err := os.Open(name)
+	dir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.Open(filepath.Join(dir, name))
 	if err != nil {
 		return nil, err
 	}

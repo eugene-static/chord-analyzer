@@ -68,7 +68,7 @@ c  3   4   5   6   7
 // "c" is for capo
 ```
 "BuildPNG" returns []byte, so it can be written to any output.
-Result image resolution is 475x400 px
+Result image resolution is 650x450 px
 ```
 file, err := os.Create("result.png")
 if err != nil {...}
