@@ -7,8 +7,6 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
-	"os"
-	"path/filepath"
 
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
@@ -32,9 +30,9 @@ const (
 	fretMax      = 18
 )
 const (
-	fretBoardPath = "analyzer/src/fretboard.png"
-	symbolsPath   = "analyzer/src/symbols.png"
-	verdanaPath   = "analyzer/src/verdana.ttf"
+	fretBoardPath = "fretboard.png"
+	symbolsPath   = "symbols.png"
+	verdanaPath   = "verdana.ttf"
 )
 
 func newDrawInfo(name, pattern string, fret int, capo bool) *drawInfo {
@@ -48,14 +46,15 @@ func newDrawInfo(name, pattern string, fret int, capo bool) *drawInfo {
 
 func (info *drawInfo) buildPNG() ([]byte, error) {
 	tab, err := toArray(info.pattern)
+	storage, err := NewStorage("./data")
 	if err != nil {
 		return nil, err
 	}
-	fretboard, err := readPNG(fretBoardPath)
+	fretboard, err := readPNG(storage, fretBoardPath)
 	if err != nil {
 		return nil, err
 	}
-	symbols, err := readPNG(symbolsPath)
+	symbols, err := readPNG(storage, symbolsPath)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +91,7 @@ func (info *drawInfo) buildPNG() ([]byte, error) {
 		move(&cell, zero, cellHeight*6+cellHeight/2)
 		draw.Draw(canvas, cell, symbols, capoZP, draw.Over)
 	}
-	err = drawText(canvas, info.name, info.fret)
+	err = drawText(storage, canvas, info.name)
 	if err != nil {
 		return nil, err
 	}
@@ -108,13 +107,12 @@ func writeToBytes(img *image.RGBA) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func drawText(img *image.RGBA, name string, fret int) error {
-	dir := os.Getenv("GOPATH")
-	fontFile, err := os.ReadFile(filepath.Join(dir, verdanaPath))
+func drawText(storage *Storage, img *image.RGBA, name string) error {
+	fontData, err := storage.Get(verdanaPath)
 	if err != nil {
 		return err
 	}
-	fontFace, err := freetype.ParseFont(fontFile)
+	fontFace, err := freetype.ParseFont(fontData)
 	faceOptions := &truetype.Options{
 		Size:    nameFontsize,
 		DPI:     fontDPI,
@@ -132,14 +130,12 @@ func drawText(img *image.RGBA, name string, fret int) error {
 	fontDrawer.DrawString(name)
 	return nil
 }
-func readPNG(name string) (*image.RGBA, error) {
-	dir := os.Getenv("GOPATH")
-	file, err := os.Open(filepath.Join(dir, name))
+func readPNG(storage *Storage, name string) (*image.RGBA, error) {
+	fileData, err := storage.Get(name)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
-	grid, err := png.Decode(file)
+	grid, err := png.Decode(bytes.NewReader(fileData))
 	if err != nil {
 		return nil, err
 	}
@@ -171,3 +167,14 @@ func move(cell *image.Rectangle, x, y int) {
 	cell.Max.X = x + cellWidth
 	cell.Max.Y = y + cellHeight
 }
+
+//func load(storage *Storage, names ...string) error {
+//	for _, name := range names {
+//		data, err := os.ReadFile(name)
+//		if err != nil {
+//			return err
+//		}
+//		err = storage.Save(filepath.Base(name), data)
+//	}
+//	return nil
+//}
