@@ -109,10 +109,7 @@ func writeToBytes(img *image.RGBA) ([]byte, error) {
 }
 
 func drawText(img *image.RGBA, name string, fret int) error {
-	dir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
+	dir := os.Getenv("GOPATH")
 	fontFile, err := os.ReadFile(filepath.Join(dir, verdanaPath))
 	if err != nil {
 		return err
@@ -136,10 +133,7 @@ func drawText(img *image.RGBA, name string, fret int) error {
 	return nil
 }
 func readPNG(name string) (*image.RGBA, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
+	dir := os.Getenv("GOPATH")
 	file, err := os.Open(filepath.Join(dir, name))
 	if err != nil {
 		return nil, err
