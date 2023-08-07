@@ -6,7 +6,6 @@ import (
 )
 
 type tabInfo struct {
-	name    string
 	pattern string
 	fret    int
 	capo    bool
@@ -23,17 +22,16 @@ const (
 	finger       = "#"
 )
 
-func newTabInfo(chordName, pattern string, fret int, capo bool) *tabInfo {
+func newTabInfo(pattern string, fret int, capo bool) *tabInfo {
 	return &tabInfo{
-		name:    chordName,
 		pattern: pattern,
 		fret:    fret,
 		capo:    capo,
 	}
 }
 
-func (c *tabInfo) buildTab() string {
-	chordTab := c.name + "\n"
+func (c *tabInfo) buildTab(name string) string {
+	chordTab := name + "\n"
 	for _, fr := range c.pattern {
 		switch fr {
 		case 'X':

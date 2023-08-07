@@ -2,7 +2,7 @@
 ***beta-test***
 
 Package provides method for analyzing chord based on guitar fingering pattern.
-It also includes methods for building chord tab and PNG image.
+It also includes method for building chord tab.
 
 The guitar fingering pattern consist of the string pattern like "34353X"
 from highest to lowest string and offset fret number.
@@ -38,20 +38,18 @@ Root: D, Quality: , Extension: maj7, Alteration: , Omission:
 
 ```
 
-A chord name is necessary to build tab and image. To get name from analyzed chord,
-you can use 'BuildName' method.
+To get name from analyzed chord, you can use 'BuildName' method.
 
 ```
 name := names.Base.BuildName() // Dmaj7
 ```
 
-"WithName" method allows you to use "BuildTab" and "BuildChord" methods.
+Use 'BuildTab' method to get chord tab.
 You can use your own name, if you are not agree with analyzed name
 
 ```
-chordWithName, err := chord.WithName(name)
-if err != nil {...}
-tab := chordWithName.BuildTab()
+chord.Name = name
+tab, err := chord.BuildTab()
 fmt.Println(tab)
 ```
 **Result:**
@@ -67,16 +65,3 @@ c  3   4   5   6   7
 
 // "c" is for capo
 ```
-"BuildPNG" returns []byte, so it can be written to any output.
-Result image resolution is 650x450 px
-```
-file, err := os.Create("result.png")
-if err != nil {...}
-img, err := chordWithName.BuildPNG()
-if err != nil {...}
-_, err = file.Write(img)
-if err != nil {...}
-````
-**Result:**
-
-![example](example.png)

@@ -6,17 +6,6 @@ import (
 	"unicode"
 )
 
-// ChordBuilder allows to generate chord tab and chord image.
-// Use "WithName()" method to implement this interface
-type ChordBuilder interface {
-	BuildTab() string
-	BuildPNG() ([]byte, error)
-}
-type ChordInfoWithName struct {
-	Name string
-	ChordInfo
-}
-
 // ChordInfo stores request information
 //
 // Pattern must look like "01220X" from the highest string to the lowest, have length = 6
@@ -84,24 +73,6 @@ func NewChordInfo(pattern string, fret int, capo bool) *ChordInfo {
 	}
 }
 
-// WithName allows to generate chord tab and image
-func (c *ChordInfo) WithName(name string) (ChordBuilder, error) {
-	if len(name) == 0 {
-		return nil, errors.New("chord name can't be empty")
-	}
-	if len(name) > 20 {
-		return nil, errors.New("chord name is too long")
-	}
-	err := validate(c.Pattern, c.Fret)
-	if err != nil {
-		return nil, err
-	}
-	return &ChordInfoWithName{
-		Name:      name,
-		ChordInfo: *c,
-	}, nil
-}
-
 // GetNames calculates intervals from guitar chord pattern and returns their symbolic values according to music theory.
 // Guitar pattern contains information about fingering of the chord
 // Ex: "00023X", fret = 2, capo = true --> is equal to Dmaj7 chord.
@@ -165,15 +136,15 @@ func (c *ChordName) BuildName() string {
 }
 
 // BuildTab returns string containing chord fingering tab
-func (c *ChordInfoWithName) BuildTab() string {
-	info := newTabInfo(c.Name, c.Pattern, c.Fret, c.Capo)
-	return info.buildTab()
-}
-
-// BuildPNG returns PNG encoded bytes, which could be written into a file, http response, or somewhere else
-func (c *ChordInfoWithName) BuildPNG() ([]byte, error) {
-	info := newDrawInfo(c.Name, c.Pattern, c.Fret, c.Capo)
-	return info.buildPNG()
+func (c *ChordInfo) BuildTab(name string) (string, error) {
+	if len(name) == 0 {
+		return "", errors.New("chord name can't be empty")
+	}
+	if len(name) > 20 {
+		return "", errors.New("chord name is too long")
+	}
+	info := newTabInfo(c.Pattern, c.Fret, c.Capo)
+	return info.buildTab(name), nil
 }
 
 func validate(pattern string, fret int) error {
