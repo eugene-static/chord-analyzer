@@ -1,8 +1,43 @@
 package analyzer
 
-import (
-	"strings"
-)
+import "strings"
+
+type filters struct {
+	q []bool
+	e []bool
+	a []bool
+}
+type symbols struct {
+	q     []string
+	e     []string
+	a     []string
+	notes []string
+	major map[string]string
+	minor map[string]string
+	sharp map[string]string
+}
+
+func install() *filters {
+	return &filters{
+		q: []bool{false, false, false, false, false, false, false},
+		e: []bool{false, false, false, false, false, false, false, false, false, false, false, false, false},
+		a: []bool{false, false, false, false, false, false, false, false, false, false, false, false},
+	}
+}
+func initSymbols() *symbols {
+	return &symbols{
+		q:     []string{"sus2", "sus4", "m", "dim", "", "aug", "no3"},
+		e:     []string{"5", "b6", "b13", "6", "7", "9", "11", "13", "maj7", "maj9", "maj11", "maj13", "onoE"},
+		a:     []string{"b5", "#5", "b6", "b9", "#9", "#11", "b13", "addb9", "add9", "add#9", "add11", "add#11"},
+		notes: []string{"E", "F", "fg", "G", "ga", "A", "ab", "B", "C", "cd", "D", "de"},
+		major: map[string]string{"E": "E", "F": "F", "fg": "Gb", "G": "G", "ga": "Ab", "A": "A", "ab": "Bb", "B": "B",
+			"C": "C", "cd": "Db", "D": "D", "de": "Eb"},
+		minor: map[string]string{"E": "E", "F": "F", "fg": "F#", "G": "G", "ga": "G#", "A": "A", "ab": "Bb", "B": "B",
+			"C": "C", "cd": "C#", "D": "D", "de": "Eb"},
+		sharp: map[string]string{"E": "E", "F": "F", "fg": "F#", "G": "G", "ga": "G#", "A": "A", "ab": "A#", "B": "B",
+			"C": "C", "cd": "C#", "D": "D", "de": "D#"},
+	}
+}
 
 const (
 	minSecond     = 1 + iota //m2
@@ -29,13 +64,17 @@ const (
 )
 const (
 	qsus2 = iota
-	qmin
-	qdur
 	qsus4
+	qmin
 	qdim
+	qdur
 	qaug
-	e5
+	ono3
+)
+const (
+	e5 = iota
 	eb6
+	eb13
 	e6
 	e7
 	e9
@@ -45,278 +84,301 @@ const (
 	emaj9
 	emaj11
 	emaj13
-	ab5
+	onoe
+)
+const (
+	ab5 = iota
 	as5
+	ab6
 	ab9
 	as9
 	as11
 	ab13
-	aaddb9
-	aadd9
-	aadds9
-	aadd11
-	aadds11
-	ono3
-	ono5
-	ono6
-	ono7
+	addb9
+	add9
+	adds9
+	add11
+	adds11
+)
+const (
+	comma = ","
+	slash = "/"
 )
 
-type trapped struct {
-	hooks    []bool
-	symbols  []string
-	notes    []string
-	majorMap map[string]string
-	minorMap map[string]string
-	sharpMap map[string]string
+func (f *filters) do(c []bool) {
+	f.qualityFilter(c)
+	f.extensionFilter(c)
+	f.alterFilter(c)
 }
 
-func prepare() *trapped {
-	hooks := make([]bool, 32)
-	for i := range hooks {
-		hooks[i] = false
-	}
-	return &trapped{hooks: hooks,
-		symbols: []string{"sus2", "m", "dur", "sus4", "dim", "aug",
-			"5", "b6", "6", "7", "9", "11", "13", "maj7", "maj9", "maj11", "maj13",
-			"b5", "#5", "b9", "#9", "#11", "b13", "addb9", "add9", "add#9", "add11", "add#11",
-			"no3", "no5", "no6", "no7"},
-		notes: []string{"E", "F", "fg", "G", "ga", "A", "ab", "B", "C", "cd", "D", "de"},
-		majorMap: map[string]string{"E": "E", "F": "F", "fg": "Gb", "G": "G", "ga": "Ab", "A": "A", "ab": "Bb", "B": "B",
-			"C": "C", "cd": "Db", "D": "D", "de": "Eb"},
-		minorMap: map[string]string{"E": "E", "F": "F", "fg": "F#", "G": "G", "ga": "G#", "A": "A", "ab": "Bb", "B": "B",
-			"C": "C", "cd": "C#", "D": "D", "de": "Eb"},
-		sharpMap: map[string]string{"E": "E", "F": "F", "fg": "F#", "G": "G", "ga": "G#", "A": "A", "ab": "A#", "B": "B",
-			"C": "C", "cd": "C#", "D": "D", "de": "D#"},
-	}
-}
-func (trap *trapped) hide() {
-	trap.hooks = nil
-	trap.symbols = nil
-	trap.notes = nil
-	trap.majorMap = nil
-	trap.minorMap = nil
-	trap.sharpMap = nil
-}
-
-func (trap *trapped) release(i ...int) {
-	for _, r := range i {
-		trap.hooks[r] = false
-	}
-}
-func (trap *trapped) catch(i ...int) {
-	for _, r := range i {
-		trap.hooks[r] = true
-	}
-}
-func (trap *trapped) cop(i int) {
-	trap.hooks[i] = true
-}
-func (trap *trapped) rid(i int) {
-	trap.hooks[i] = false
-}
-
-func (trap *trapped) install(c []bool) {
-	trap.catch(ono3, ono5, ono6, ono7)
-	if c[majSecond] && !(c[minThird] || c[majThird] || c[perfectFourth]) {
-		trap.cop(qsus2)
-		trap.rid(ono3)
-	}
-	if c[minThird] && !c[majThird] {
-		trap.cop(qmin)
-		trap.rid(ono3)
-	}
-	if c[majThird] {
-		trap.cop(qdur)
-		trap.rid(ono3)
-	}
-	if c[perfectFourth] && !(c[minThird] || c[majThird]) {
-		trap.cop(qsus4)
-		trap.rid(ono3)
-	}
-	if c[flatFifth] && !c[perfectFifth] {
-		trap.cop(ab5)
-		trap.rid(ono5)
-		if c[minThird] && !(c[minSeventh] || c[majSeventh]) {
-			trap.cop(qdim)
-			trap.release(qmin, ab5)
-		}
-	}
-	if c[perfectFifth] {
-		trap.cop(e5)
-		trap.rid(ono5)
-	}
-	if c[sharpFifth] && !(c[majSecond] || c[minThird] || /*c[perfectFourth] ||*/ c[perfectFifth]) {
-		trap.cop(as5)
-		trap.rid(ono5)
-		if c[majThird] && !(c[minSeventh] || c[majSeventh]) {
-			trap.cop(qaug)
-			trap.release(qdur, ab5, as5)
-		}
-	}
-	if c[flatSixth] && !(c[majThird] || c[sixth] || c[minSeventh] || c[majSeventh]) {
-		if !trap.hooks[qaug] {
-			trap.cop(eb6)
-			trap.rid(ono6)
-			//	trap.rid(eb6)
-			//	trap.cop(ono6)
-		}
-	}
-	if c[sixth] && !(c[minSeventh] || c[majSeventh]) {
-		trap.cop(e6)
-		trap.rid(ono6)
-		if trap.hooks[qdim] {
-			trap.release(e6, ono7)
-			trap.catch(e7, ono6)
-		}
-	}
-	if c[minSeventh] {
-		if !trap.hooks[qdim] {
-			trap.cop(e7)
-			trap.rid(ono7)
-		}
-	}
-	if c[majSeventh] {
-		if !trap.hooks[qdim] {
-			trap.cop(emaj7)
-			trap.rid(ono7)
-		}
-	}
-	if c[flatNinth] {
-		if trap.hooks[ono7] && trap.hooks[ono6] {
-			trap.cop(aaddb9)
-		} else {
-			trap.cop(ab9)
-		}
-	}
-	if c[ninth] {
-		if !trap.hooks[qsus2] {
-			if trap.hooks[ono7] && trap.hooks[ono6] {
-				trap.cop(aadd9)
-			} else {
-				if trap.hooks[ono7] {
-					trap.cop(e9)
-					trap.rid(eb6)
-				} else {
-					if trap.hooks[e7] {
-						trap.cop(e9)
-						trap.rid(e7)
-					}
-					if trap.hooks[emaj7] {
-						trap.cop(emaj9)
-						trap.rid(emaj7)
-					}
-				}
-			}
-		}
-
-	}
-	if c[sharpNinth] {
-		if !(trap.hooks[qmin] || trap.hooks[qdim]) {
-			if trap.hooks[ono7] && trap.hooks[ono6] {
-				trap.cop(aadds9)
-			} else {
-				trap.cop(as9)
-			}
-		}
-	}
-	if c[eleventh] {
-		if !trap.hooks[qsus4] {
-			if trap.hooks[ono7] && trap.hooks[ono6] {
-				trap.cop(aadd11)
-			} else {
-				if trap.hooks[ono7] {
-					trap.cop(e11)
-				} else {
-					if trap.hooks[e7] || trap.hooks[e9] {
-						trap.cop(e11)
-						trap.release(e7, e9)
-					}
-					if trap.hooks[emaj7] || trap.hooks[emaj9] {
-						trap.cop(emaj11)
-						trap.release(emaj7, emaj9)
-					}
-				}
-			}
-		}
-	}
-	if c[sharpEleventh] {
-		if !(trap.hooks[qmin] || trap.hooks[qdim] || trap.hooks[ab5]) {
-			if trap.hooks[ono6] && trap.hooks[ono7] {
-				trap.cop(aadds11)
-			} else {
-				trap.cop(as11)
-			}
-		}
-	}
-	if c[flatThirteenth] {
-		//if !trap.hooks[as5] && !trap.hooks[qaug] && (!trap.hooks[ono7] || !trap.hooks[ono6]) {
-		//	trap.cop(ab13)
-		//	trap.rid(eb6)
-		//}
-		if !trap.hooks[qaug] && !trap.hooks[ono7] {
-			trap.cop(ab13)
-			trap.release(eb6, as5)
-		}
-	}
-	if c[thirteenth] {
-		if !trap.hooks[qdim] && trap.hooks[ono6] {
-			if trap.hooks[e7] || trap.hooks[e9] || trap.hooks[e11] {
-				trap.cop(e13)
-				trap.release(e7, e9, e11)
-			}
-			if trap.hooks[emaj7] || trap.hooks[emaj9] || trap.hooks[emaj11] {
-				trap.cop(emaj13)
-				trap.release(emaj7, emaj9, emaj11)
-			}
-		}
-	}
-}
-
-// getIntervalNames uses 'install' method to get matches between requested intervals and their names in trap.symbols array
-// according to music theory
-func getIntervalsNames(rootIndex int, intervals []bool, length int) (root, quality, extended, altered, omitted string) {
-	trap := prepare()
-	defer trap.hide()
-	root = trap.notes[rootIndex]
+func getNames(rootIndex int, intervals []bool, length int) (root, quality, extended, altered, omitted string) {
+	filter := install()
+	sym := initSymbols()
+	defer func() {
+		filter = nil
+		sym = nil
+	}()
+	root = sym.notes[rootIndex]
 	if length == 1 {
-		root = trap.minorMap[root]
+		root = sym.minor[root]
 		return
 	}
-	trap.install(intervals)
-	var ext, alt []string
 	switch {
-	case trap.hooks[qdur]:
-		root = trap.majorMap[root]
-	case trap.hooks[qdim], trap.hooks[qaug]:
-		root = trap.sharpMap[root]
+	case filter.q[qdur]:
+		root = sym.major[root]
+	case filter.q[qdim], filter.q[qaug]:
+		root = sym.sharp[root]
 	default:
-		root = trap.minorMap[root]
+		root = sym.minor[root]
 	}
-	for i, r := range trap.hooks {
-		if r {
-			switch {
-			case i < e5:
-				if i != qdur {
-					quality = trap.symbols[i]
-				}
-			case i < ab5:
-				if i == e5 {
-					if length == 2 {
-						extended = trap.symbols[i]
-						return
-					}
-				} else {
-					ext = append(ext, trap.symbols[i])
-				}
-			case i < ono3:
-				alt = append(alt, trap.symbols[i])
-			case i == ono3:
-				omitted = trap.symbols[i]
+	if filter.powerFilter(intervals, length) {
+		extended = sym.e[e5]
+		return
+	}
+	filter.do(intervals)
+	var ext, alt []string
+	if filter.q[ono3] {
+		omitted = sym.q[ono3]
+	} else {
+		for i := 0; i < ono3; i++ {
+			if filter.q[i] {
+				quality = sym.q[i]
+				break
 			}
 		}
 	}
-	extended = strings.Join(ext, "/")
-	altered = strings.Join(alt, ",")
+	if !filter.e[onoe] {
+		for i := 1; i < onoe; i++ {
+			if filter.e[i] {
+				ext = append(ext, sym.e[i])
+			}
+		}
+	}
+	for i, a := range filter.a {
+		if a {
+			alt = append(alt, sym.a[i])
+		}
+	}
+	extended = strings.Join(ext, filter.separator())
+	if strings.ContainsRune(root, 'b') && quality == "" && filter.e[eb6] {
+		altered = extended
+		extended = ""
+	}
+	if altered != "" && alt != nil {
+		altered += comma
+	}
+	altered += strings.Join(alt, comma)
 	return
+}
+
+func (f *filters) powerFilter(c []bool, length int) bool {
+	f.e[e5] = c[perfectFifth] && length == 2
+	return f.e[e5]
+}
+
+func (f *filters) qualityFilter(c []bool) {
+	var q int
+	switch {
+	case c[majThird]:
+		q = qdur
+	case c[minThird]:
+		q = qmin
+	case c[perfectFourth]:
+		q = qsus4
+	case c[majSecond]:
+		q = qsus2
+	default:
+		q = ono3
+	}
+	if !c[perfectFifth] && !c[minSeventh] && !c[majSeventh] {
+		if q == qdur && c[sharpFifth] && !c[flatFifth] { //!c[flatFifth]
+			q = qaug
+		}
+		if q == qmin && c[flatFifth] && !c[sharpFifth] { //!c[sharpFifth]
+			q = qdim
+		}
+	}
+	f.qSelect(q)
+}
+
+func (f *filters) extensionFilter(c []bool) {
+	switch {
+	case f.q[qdim]:
+		if c[sixth] {
+			switch {
+			case c[flatThirteenth]:
+				f.eSelect(eb13)
+			case c[eleventh]:
+				f.eSelect(e11)
+			case c[ninth]:
+				f.eSelect(e9)
+			default:
+				f.eSelect(e7)
+			}
+		} else if c[flatSixth] {
+			f.eSelect(eb6)
+			f.e[e9] = c[ninth]
+			f.e[e11] = c[eleventh]
+		} else {
+			f.eSelect(onoe)
+		}
+	case f.q[qaug]:
+		if c[sixth] {
+			f.eSelect(e6)
+			f.e[e9] = c[ninth]
+			f.e[e11] = c[eleventh]
+		} else {
+			f.eSelect(onoe)
+		}
+
+	case f.q[qsus2], f.q[qsus4], f.q[qmin], f.q[qdur], f.q[ono3]:
+		if c[minSeventh] || c[majSeventh] {
+			rise := 0
+			switch {
+			case c[thirteenth]:
+				rise = e13
+			case c[eleventh] && !f.q[qsus4]:
+				rise = e11
+			case c[ninth] && !f.q[qsus2]:
+				rise = e9
+			default:
+				rise = e7
+			}
+			if c[minSeventh] {
+				f.eSelect(rise)
+			}
+			if c[majSeventh] {
+				f.eSelect(rise + 4)
+			}
+		} else if c[flatSixth] || c[sixth] {
+			if c[sixth] {
+				f.eSelect(e6)
+			} else {
+				f.eSelect(eb6)
+			}
+			f.e[e9] = c[ninth] && !f.q[qsus2]
+			f.e[e11] = c[eleventh] && !f.q[qsus4]
+		} else {
+			f.eSelect(onoe)
+		}
+	}
+}
+func (f *filters) alterFilter(c []bool) {
+	switch {
+	case f.q[qdur], f.q[qsus4], f.q[qsus2]:
+		if f.e[onoe] {
+			f.a[addb9] = c[flatNinth]
+			f.a[add9] = c[ninth] && !f.q[qsus2]
+			f.a[adds9] = c[sharpNinth] && f.q[qdur]
+			f.a[add11] = c[eleventh] && !f.q[qsus4]
+			if c[perfectFifth] {
+				f.a[adds11] = c[sharpEleventh]
+				f.a[ab6] = c[flatSixth]
+			} else {
+				f.a[ab5] = c[flatFifth]
+				f.a[as5] = c[sharpFifth]
+			}
+		} else {
+			f.a[ab9] = c[flatNinth]
+			f.a[as9] = c[sharpNinth]
+			if c[perfectFifth] {
+				f.a[as11] = c[sharpEleventh]
+				if c[flatSixth] && !f.e[eb6] {
+					if (f.e[e13] || f.e[emaj13]) && !f.e[e6] {
+						f.aSelect(ab6)
+					} else {
+						f.aSelect(ab13)
+					}
+				}
+			} else {
+				f.a[ab5] = c[flatFifth]
+				f.a[as5] = c[sharpFifth] //&& !f.e[EB6]
+			}
+		}
+	case f.q[qmin]:
+		if f.e[onoe] {
+			f.a[addb9] = c[flatNinth]
+			f.a[add9] = c[ninth]
+			f.a[add11] = c[eleventh]
+			if c[perfectFifth] {
+				f.a[adds11] = c[sharpEleventh]
+				f.a[ab6] = c[flatSixth]
+			} else {
+				f.a[ab5] = c[flatFifth]
+				f.a[as5] = c[sharpFifth]
+			}
+		} else {
+			f.a[ab9] = c[flatNinth]
+			if c[flatFifth] {
+				if c[perfectFifth] {
+					f.aSelect(as11)
+				} else {
+					f.aSelect(ab5)
+					f.a[as5] = c[sharpFifth] //&& !f.e[EB6]
+				}
+			} else if c[flatSixth] && !f.e[eb6] {
+				if (f.e[e13] || f.e[emaj13]) && !f.e[e6] {
+					f.aSelect(ab6)
+				} else {
+					f.aSelect(ab13)
+				}
+			}
+		}
+	case f.q[qdim]:
+		if f.e[onoe] {
+			f.a[addb9] = c[flatNinth]
+			f.a[add9] = c[ninth]
+			f.a[add11] = c[eleventh]
+		} else {
+			f.a[ab9] = c[flatNinth]
+		}
+	case f.q[qaug]:
+		if f.e[onoe] {
+			f.a[addb9] = c[flatNinth]
+			f.a[add9] = c[ninth]
+			f.a[adds9] = c[sharpNinth]
+			f.a[add11] = c[eleventh]
+			f.a[adds11] = c[sharpEleventh]
+		} else {
+			f.a[ab9] = c[flatNinth]
+			f.a[as9] = c[sharpNinth]
+		}
+	case f.q[ono3]:
+		if f.e[onoe] {
+			f.a[addb9] = c[flatNinth]
+			if c[perfectFifth] {
+				f.a[adds11] = c[sharpEleventh]
+				f.a[ab6] = c[flatSixth]
+			} else {
+				f.a[ab5] = c[flatFifth]
+				f.a[as5] = c[sharpFifth]
+			}
+		} else {
+			f.a[ab9] = c[flatNinth]
+			f.a[as11] = c[sharpEleventh]
+			if c[flatSixth] && !f.e[eb6] {
+				if (f.e[e13] || f.e[emaj13]) && !f.e[e6] {
+					f.aSelect(ab6)
+				} else {
+					f.aSelect(ab13)
+				}
+			}
+		}
+	}
+}
+
+func (f *filters) qSelect(i int) {
+	f.q[i] = true
+}
+func (f *filters) eSelect(i int) {
+	f.e[i] = true
+}
+func (f *filters) aSelect(i int) {
+	f.a[i] = true
+}
+func (f *filters) separator() string {
+	if f.e[e6] || f.e[eb6] {
+		return slash
+	}
+	return comma
 }

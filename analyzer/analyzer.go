@@ -94,7 +94,7 @@ func (c *ChordInfo) GetNames() (*ChordNames, error) {
 	var variations []ChordName
 	notes, baseRoot, length := chordPattern.calculateNotes()
 	for bass, intervals := range notes {
-		root, quality, extended, altered, omitted := getIntervalsNames(bass, intervals, length)
+		root, quality, extended, altered, omitted := getNames(bass, intervals, length)
 		if bass == baseRoot {
 			baseChordName = ChordName{
 				Root:     root,

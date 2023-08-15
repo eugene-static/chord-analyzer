@@ -50,8 +50,14 @@ func (c *tabInfo) buildTab(name string) string {
 	} else {
 		chordTab += space
 	}
+	var sp string
 	for i := 1; i < 6; i++ {
-		chordTab += doubleSpace + strconv.Itoa(c.fret+i) + space
+		if c.fret+i < 10 {
+			sp = space
+		} else {
+			sp = ""
+		}
+		chordTab += doubleSpace + strconv.Itoa(c.fret+i) + sp
 	}
 	return chordTab
 }
