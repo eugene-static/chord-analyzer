@@ -147,6 +147,11 @@ func (c *ChordInfo) BuildTab(name string) (string, error) {
 	return info.buildTab(name), nil
 }
 
+func (c *ChordInfo) BuildPNG(name string) ([]byte, error) {
+	info := newPNGInfo(name, c.Pattern, c.Fret, c.Capo)
+	return info.buildPNG()
+}
+
 func validate(pattern string, fret int) error {
 	if len(pattern) != patternLength {
 		return lengthError
