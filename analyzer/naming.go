@@ -292,7 +292,7 @@ func (f *filters) alterFilter(c []bool) {
 				}
 			} else {
 				f.a[ab5] = c[flatFifth]
-				f.a[as5] = c[sharpFifth] //&& !f.e[EB6]
+				f.a[as5] = c[sharpFifth] && !f.e[eb6]
 			}
 		}
 	case f.q[qmin]:
