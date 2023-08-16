@@ -8,6 +8,7 @@ import (
 	"image/draw"
 	"image/png"
 	"os"
+	"path/filepath"
 
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
@@ -46,15 +47,19 @@ func newPNGInfo(name, pattern string, fret int, capo bool) *pngInfo {
 }
 
 func (info *pngInfo) buildPNG() ([]byte, error) {
+	path, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
 	tab, err := info.toArray()
 	if err != nil {
 		return nil, err
 	}
-	fretboard, err := readPNG(fretBoardPath)
+	fretboard, err := readPNG(filepath.Join(path, fretBoardPath))
 	if err != nil {
 		return nil, err
 	}
-	symbols, err := readPNG(symbolsPath)
+	sym, err := readPNG(filepath.Join(path, symbolsPath))
 	if err != nil {
 		return nil, err
 	}
@@ -78,20 +83,20 @@ func (info *pngInfo) buildPNG() ([]byte, error) {
 		switch str {
 		case -1:
 			move(&cell, zero, height)
-			draw.Draw(canvas, cell, symbols, mutedZP, draw.Over)
+			draw.Draw(canvas, cell, sym, mutedZP, draw.Over)
 		case 0:
 			move(&cell, zero, height)
-			draw.Draw(canvas, cell, symbols, openZP, draw.Over)
+			draw.Draw(canvas, cell, sym, openZP, draw.Over)
 		default:
 			move(&cell, str*cellWidth, height)
-			draw.Draw(canvas, cell, symbols, fingerZP, draw.Over)
+			draw.Draw(canvas, cell, sym, fingerZP, draw.Over)
 		}
 	}
 	if info.Capo && info.Fret != 0 {
 		move(&cell, zero, cellHeight*6+cellHeight/2)
-		draw.Draw(canvas, cell, symbols, capoZP, draw.Over)
+		draw.Draw(canvas, cell, sym, capoZP, draw.Over)
 	}
-	err = info.drawText(canvas)
+	err = info.drawText(canvas, path)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +104,6 @@ func (info *pngInfo) buildPNG() ([]byte, error) {
 	return dir, err
 }
 func (info *pngInfo) write(img *image.RGBA) ([]byte, error) {
-	//path = filepath.Join(path, "name.png")
 	var b bytes.Buffer
 	err := png.Encode(&b, img)
 	if err != nil {
@@ -109,8 +113,8 @@ func (info *pngInfo) write(img *image.RGBA) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (info *pngInfo) drawText(img *image.RGBA) error {
-	fontData, err := os.ReadFile(verdanaPath)
+func (info *pngInfo) drawText(img *image.RGBA, path string) error {
+	fontData, err := os.ReadFile(filepath.Join(path, verdanaPath))
 	if err != nil {
 		return err
 	}
