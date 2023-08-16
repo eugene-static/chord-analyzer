@@ -2,13 +2,13 @@ package analyzer
 
 import (
 	"bytes"
+	"embed"
+	_ "embed"
 	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/png"
-	"os"
-	"path/filepath"
 
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
@@ -25,10 +25,13 @@ const (
 	fretMax      = 18
 )
 const (
-	fretBoardPath = "analyzer/assets/fretboard.png"
-	symbolsPath   = "analyzer/assets/symbols.png"
-	verdanaPath   = "analyzer/assets/verdana.ttf"
+	fretBoardPath = "assets/fretboard.png"
+	symbolsPath   = "assets/symbols.png"
+	verdanaPath   = "assets/verdana.ttf"
 )
+
+//go:embed assets/*
+var assets embed.FS
 
 type pngInfo struct {
 	Name    string
@@ -47,19 +50,15 @@ func newPNGInfo(name, pattern string, fret int, capo bool) *pngInfo {
 }
 
 func (info *pngInfo) buildPNG() ([]byte, error) {
-	path, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
 	tab, err := info.toArray()
 	if err != nil {
 		return nil, err
 	}
-	fretboard, err := readPNG(filepath.Join(path, fretBoardPath))
+	fretboard, err := readPNG(fretBoardPath)
 	if err != nil {
 		return nil, err
 	}
-	sym, err := readPNG(filepath.Join(path, symbolsPath))
+	sym, err := readPNG(symbolsPath)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +95,7 @@ func (info *pngInfo) buildPNG() ([]byte, error) {
 		move(&cell, zero, cellHeight*6+cellHeight/2)
 		draw.Draw(canvas, cell, sym, capoZP, draw.Over)
 	}
-	err = info.drawText(canvas, path)
+	err = info.drawText(canvas)
 	if err != nil {
 		return nil, err
 	}
@@ -113,8 +112,8 @@ func (info *pngInfo) write(img *image.RGBA) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (info *pngInfo) drawText(img *image.RGBA, path string) error {
-	fontData, err := os.ReadFile(filepath.Join(path, verdanaPath))
+func (info *pngInfo) drawText(img *image.RGBA) error {
+	fontData, err := assets.ReadFile(verdanaPath)
 	if err != nil {
 		return err
 	}
@@ -154,7 +153,7 @@ func (info *pngInfo) toArray() (result []int, err error) {
 }
 
 func readPNG(path string) (*image.RGBA, error) {
-	fileData, err := os.Open(path)
+	fileData, err := assets.Open(path)
 	if err != nil {
 		return nil, err
 	}
