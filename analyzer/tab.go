@@ -31,24 +31,32 @@ func newTabInfo(pattern string, fret int, capo bool) *tabInfo {
 }
 
 func (c *tabInfo) buildTab(name string) string {
-	chordTab := name + "\n"
+	chordTab := strings.Builder{}
+	chordTab.WriteString(name)
+	chordTab.WriteRune('\n')
 	for _, fr := range c.pattern {
 		switch fr {
 		case 'X':
-			chordTab += deadEnd + strings.Repeat(guitarString, 5) + "\n"
+			chordTab.WriteString(deadEnd)
+			chordTab.WriteString(strings.Repeat(guitarString, 5))
 		case '0':
-			chordTab += openString + strings.Repeat(guitarString, 5) + "\n"
+			chordTab.WriteString(openString)
+			chordTab.WriteString(strings.Repeat(guitarString, 5))
 		default:
 			pos := int(fr - 48)
-			chordTab += pushedString + strings.Repeat(guitarString, pos-1) +
-				guitarString[:1] + finger + guitarString[2:] +
-				strings.Repeat(guitarString, 5-pos) + "\n"
+			chordTab.WriteString(pushedString)
+			chordTab.WriteString(strings.Repeat(guitarString, pos-1))
+			chordTab.WriteString(guitarString[:1])
+			chordTab.WriteString(finger)
+			chordTab.WriteString(guitarString[2:])
+			chordTab.WriteString(strings.Repeat(guitarString, 5-pos))
 		}
+		chordTab.WriteRune('\n')
 	}
 	if c.capo && c.fret != 0 {
-		chordTab += capodastro
+		chordTab.WriteString(capodastro)
 	} else {
-		chordTab += space
+		chordTab.WriteString(space)
 	}
 	var sp string
 	for i := 1; i < 6; i++ {
@@ -57,7 +65,9 @@ func (c *tabInfo) buildTab(name string) string {
 		} else {
 			sp = ""
 		}
-		chordTab += doubleSpace + strconv.Itoa(c.fret+i) + sp
+		chordTab.WriteString(doubleSpace)
+		chordTab.WriteString(strconv.Itoa(c.fret + i))
+		chordTab.WriteString(sp)
 	}
-	return chordTab
+	return chordTab.String()
 }
